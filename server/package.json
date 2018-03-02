@@ -1,0 +1,14 @@
+{
+  "name": "livechat-server",
+  "version": "0.0.1",
+  "description": "Live hangout chat!",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "^2.0.4"
+  }
+}
