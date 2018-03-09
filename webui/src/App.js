@@ -1,11 +1,10 @@
 import React, { Component } from 'react';
+import { connect, Provider } from 'react-redux';
+
 import logo from './logo.svg';
 import './App.css';
 
-import io from 'socket.io-client';
-
-const socketUrl = 'http://localhost:9010';
-const socket = io(socketUrl);
+import { actions, store } from './redux';
 
 class FormAddMsg extends Component {
   constructor (props) {
@@ -19,7 +18,7 @@ class FormAddMsg extends Component {
       <form onSubmit={ this.handleSubmit.bind(this) }>
         <input
           onChange={ this.handleChangeInput.bind(this) }
-          value={ this.state.loginName } />
+          value={ this.state.msg } />
 
         <button type='submit'>enviar</button>
       </form>
@@ -67,19 +66,6 @@ class FormLogin extends Component {
 }
 
 class ChatRoom extends Component {
-  constructor (props) {
-    super(props);
-
-    this.state = { msgs: [ ] };
-
-    socket.on('msg', (msg) => {
-      const msgs = [ ...this.state.msgs ]
-
-      msgs.push(msg)
-      this.setState({ msgs });
-    });
-  }
-
   render () {
     return (
       <div
@@ -89,7 +75,7 @@ class ChatRoom extends Component {
         <div
           style={ { flex: 1 } }
           className='chat-window'>
-          { this.state.msgs.map(this.renderMsg.bind(this)) }
+          { this.props.msgs.map(this.renderMsg.bind(this)) }
 
           <br />
           <FormAddMsg onSubmit={ this.handleSubmit.bind(this) } />
@@ -98,7 +84,7 @@ class ChatRoom extends Component {
         <div
           style={ { width: '250px', borderLeft: '1px solid #F0F0F0' } }
           className='chat-users'>
-          { this.props.allUsers.map(this.renderUser.bind(this)) }
+          { this.props.chatUsers.map(this.renderUser.bind(this)) }
         </div>
 
       </div>
@@ -106,7 +92,7 @@ class ChatRoom extends Component {
   }
 
   handleSubmit (values) {
-    socket.emit('msg', values.msg);
+    actions.msgs.send(values.msg);
   }
 
   renderMsg (msg, index) {
@@ -134,54 +120,46 @@ class ChatRoom extends Component {
   }
 }
 
-class App extends Component {
-  constructor (props) {
-    super(props);
+const ChatRoomContainer = connect((s) => {
+  return { msgs: s.msgs, chatUsers: s.chatUsers };
+})(ChatRoom);
 
-    this.state = { loggedIn: false, allUsers: [ ], userName: '' };
-
-    socket.on('all-users', (allUsers) => {
-      this.setState({ allUsers });
-    });
-
-    socket.on('login-success', (userName) => {
-      this.setState({ loggedIn: true, userName });
-    });
-
-    socket.on('add-user', (userName) => {
-      const allUsers = [ ...this.state.allUsers ];
-
-      allUsers.push(userName);
-      this.setState({ allUsers });
-    });
-
-    socket.on('user-disconnect', (userName) => {
-      const allUsers = [ ...this.state.allUsers ];
-      allUsers.splice(allUsers.indexOf(userName), 1);
-
-      this.setState({ allUsers });
-    });
-  }
-
+class AppContent extends Component {
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-
-        { !this.state.loggedIn &&
+      <div>
+        { !this.props.user &&
           <FormLogin onSubmit={ this.handleSubmit.bind(this) } /> }
 
-        { this.state.loggedIn &&
-          <ChatRoom allUsers={ this.state.allUsers } /> }
+        { this.props.user &&
+          <ChatRoomContainer /> }
       </div>
     );
   }
 
   handleSubmit (values) {
-    socket.emit('try-login', values.loginName);
+    actions.user.tryLogin(values.loginName);
+  }
+}
+
+const AppContainer = connect((s) => {
+  return { user: s.user };
+})(AppContent);
+
+class App extends Component {
+  render() {
+    return (
+      <Provider store={ store }>
+        <div className="App">
+          <header className="App-header">
+            <img src={logo} className="App-logo" alt="logo" />
+            <h1 className="App-title">Welcome to React</h1>
+          </header>
+
+          <AppContainer />
+        </div>
+      </Provider>
+    );
   }
 }
 
